@@ -1,0 +1,46 @@
+@import "tailwindcss";
+.form-input {
+  @apply w-full border-b-2 border-[#b8d8ba] bg-transparent py-1 px-1 focus:outline-none focus:border-[#a5b295] placeholder-gray-400;
+}
+@font-face {
+  font-family: 'Slab';
+  src: url('/fonts/AlfaSlabOne-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+.slab-text {
+  font-family: 'Slab', sans-serif;
+}
+
+@font-face {
+  font-family: 'opsa';
+  src: url('/fonts/OpenSans-VariableFont_wdth,wght.ttf') format('truetype');
+  font-weight: 900;
+  font-style: normal;
+}
+
+.opsa-text{
+  font-family: 'opsa', sans-serif;
+
+}
+@font-face {
+  font-family: 'nopsa';
+  src: url('/fonts/OpenSans-VariableFont_wdth,wght.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+.nopsa-text{
+  font-family: 'nopsa', sans-serif;
+
+}
+.no-spinner::-webkit-inner-spin-button,
+.no-spinner::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.no-spinner {
+  -moz-appearance: textfield; /* Firefox */
+}
