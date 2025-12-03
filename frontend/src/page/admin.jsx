@@ -397,13 +397,12 @@ export default function Admin() {
 
             {/* CHARTS */}
             <div className="grid grid-cols-2 gap-8 mb-5">
-              <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-200 flex justify-center">
                 <LoanStatusDonut
                   pending={loanCounts.pending}
                   active={loanCounts.approvedOrPaid}
                   duedate={loanCounts.total}
                 />
-              </div>
+
 
               <SharesLineChart members={members} />
             </div>

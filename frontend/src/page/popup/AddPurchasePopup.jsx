@@ -2,10 +2,10 @@ import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
 
 /**
- * AddPurchasePopup — inputs are string-backed so empty values appear empty.
+ * AddPurchasePopup — props: { isOpen, onClose, memberId, memberName, onSaved }
  */
-export default function AddPurchasePopup({ isOpen, onClose, memberId, onSaved }) {
-  const [lines, setLines] = useState([{ name: "", qty: "", unitPrice: "" }]); // <-- strings
+export default function AddPurchasePopup({ isOpen, onClose, memberId, memberName = null, onSaved }) {
+  const [lines, setLines] = useState([{ name: "", qty: "", unitPrice: "" }]);
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [saving, setSaving] = useState(false);
   const firstInputRef = useRef(null);
@@ -28,7 +28,6 @@ export default function AddPurchasePopup({ isOpen, onClose, memberId, onSaved })
         i === idx
           ? {
               ...l,
-              // keep strings so input can be empty
               name: field === "name" ? String(value) : l.name,
               qty: field === "qty" ? String(value) : l.qty,
               unitPrice: field === "unitPrice" ? String(value) : l.unitPrice,
@@ -45,10 +44,9 @@ export default function AddPurchasePopup({ isOpen, onClose, memberId, onSaved })
   const fmtMoney = (val) =>
     Number(val || 0).toLocaleString("en-PH", { style: "currency", currency: "PHP", minimumFractionDigits: 2 });
 
-  // helpers: convert safely from string -> number
   const toQty = (s) => {
     const n = Number(String(s).replace(/[^0-9.]/g, ""));
-    return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0; // treat as integer qty
+    return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
   };
   const toPrice = (s) => {
     const n = Number(String(s).replace(/[^0-9.]/g, ""));
@@ -61,7 +59,10 @@ export default function AddPurchasePopup({ isOpen, onClose, memberId, onSaved })
     return Number((q * p).toFixed(2));
   };
 
-  const total = lines.reduce((s, l) => s + lineTotal(l), 0);
+  const subtotal = lines.reduce((s, l) => s + lineTotal(l), 0);
+  const surchargeRate = paymentMethod === "1month to pay" ? 0.01 : 0;
+  const surcharge = Number((subtotal * surchargeRate).toFixed(2));
+  const total = Number((subtotal + surcharge).toFixed(2));
 
   const validateBeforeSubmit = () => {
     if (!memberId) {
@@ -74,7 +75,6 @@ export default function AddPurchasePopup({ isOpen, onClose, memberId, onSaved })
         alert(`Please enter item name for row ${i + 1}.`);
         return false;
       }
-      // qty blank will be coerced to 1 on submit; but if provided, must be >=1
       if (l.qty && toQty(l.qty) < 1) {
         alert(`Quantity must be >= 1 for row ${i + 1}.`);
         return false;
@@ -87,30 +87,59 @@ export default function AddPurchasePopup({ isOpen, onClose, memberId, onSaved })
     return true;
   };
 
+  const computeDueDateISO = (from = new Date()) => {
+    const d = new Date(from.getTime());
+    d.setMonth(d.getMonth() + 1);
+    return d.toISOString().split("T")[0];
+  };
+
+  const formatFriendlyDate = (isoDate) => {
+    try {
+      const d = new Date(isoDate);
+      return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+    } catch {
+      return isoDate;
+    }
+  };
+
   const handleSubmit = async () => {
     if (!validateBeforeSubmit()) return;
     setSaving(true);
     try {
       const token = localStorage.getItem("token");
-      // Coerce empty qty => 1, empty price => 0
       const items = lines.map((l) => {
         const name = String(l.name).trim();
-        const qty = toQty(l.qty) || 1; // default 1
+        const qty = toQty(l.qty) || 1;
         const unitPrice = toPrice(l.unitPrice) || 0;
         return { name, qty, unitPrice, lineTotal: Number((qty * unitPrice).toFixed(2)) };
       });
 
-      const totalComputed = items.reduce((s, it) => s + it.lineTotal, 0);
+      const subtotalComputed = items.reduce((s, it) => s + it.lineTotal, 0);
+      const surchargeComputed = paymentMethod === "1month to pay" ? Number((subtotalComputed * 0.01).toFixed(2)) : 0;
+      const totalComputed = Number((subtotalComputed + surchargeComputed).toFixed(2));
 
       const body = {
         userId: memberId,
+        memberName: memberName || null,
         items,
         paymentMethod,
-        total: Number(totalComputed.toFixed(2)),
+        subtotal: Number(subtotalComputed.toFixed(2)),
+        surcharge: surchargeComputed,
+        total: totalComputed,
       };
 
+      if (paymentMethod === "1month to pay") {
+        body.dueDate = computeDueDateISO(new Date());
+      }
+
+      // DEBUG log - inspect the exact payload sent
+      console.log("DEBUG purchase body ->", JSON.stringify(body, null, 2));
+
       const res = await axios.post("/api/purchases/add", body, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
       });
 
       alert("Purchase recorded");
@@ -124,7 +153,6 @@ export default function AddPurchasePopup({ isOpen, onClose, memberId, onSaved })
     }
   };
 
-  // press Enter on price -> add new row (or focus next)
   const onPriceKeyDown = (e, idx) => {
     if (e.key === "Enter") {
       e.preventDefault();
@@ -137,15 +165,15 @@ export default function AddPurchasePopup({ isOpen, onClose, memberId, onSaved })
     }
   };
 
+  const previewDueDateISO = paymentMethod === "1month to pay" ? computeDueDateISO(new Date()) : null;
+
   return (
     <div className="fixed inset-0 bg-black/45 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-lg w-full max-w-3xl max-h-[90vh] overflow-auto p-6">
-        {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-2xl text-[#2f5134] font-bold">Record Purchase</h3>
         </div>
 
-        {/* Table header */}
         <div className="grid border-t border-[#dce9dd] pt-4 grid-cols-12 gap-8 items-center mb-2 text-sm">
           <div className="col-span-5 font-semibold">Item</div>
           <div className="col-span-2 text-right font-semibold">Qty</div>
@@ -153,7 +181,6 @@ export default function AddPurchasePopup({ isOpen, onClose, memberId, onSaved })
           <div className="col-span-1 text-right font-semibold">Total</div>
         </div>
 
-        {/* Lines */}
         <div className="space-y-3">
           {lines.map((line, idx) => (
             <div key={idx} className="grid grid-cols-12 gap-2 items-center">
@@ -197,7 +224,6 @@ export default function AddPurchasePopup({ isOpen, onClose, memberId, onSaved })
                 <div className="text-sm font-medium">{fmtMoney(lineTotal(line))}</div>
               </div>
 
-              {/* Remove button on right side of total */}
               <div className="col-span-2 flex justify-end mt-1">
                 <button
                   type="button"
@@ -205,7 +231,7 @@ export default function AddPurchasePopup({ isOpen, onClose, memberId, onSaved })
                   className="text-red-500 text-sm px-2 py-1 rounded hover:bg-red-50"
                   aria-label={`Remove item ${idx + 1}`}
                 >
-                 Remove
+                  Remove
                 </button>
               </div>
             </div>
@@ -227,12 +253,10 @@ export default function AddPurchasePopup({ isOpen, onClose, memberId, onSaved })
               className="border mb-4 shadow-md border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-[#7e9e6c]"
             >
               <option value="cash">Cash</option>
-              <option value="share-deduction">1 month to pay</option>
+              <option value="1month to pay">1 month to pay</option>
             </select>
           </div>
-          <div className="col-span-2">
-
-          </div>
+          <div className="col-span-2"></div>
 
           <div className="flex bg-[#d6ead8] border border-gray-400 rounded-lg mb-4 p-3 flex-col items-end">
             <div className="text-sm text-gray-600">Total</div>
@@ -240,7 +264,61 @@ export default function AddPurchasePopup({ isOpen, onClose, memberId, onSaved })
           </div>
         </div>
 
-        {/* Footer actions */}
+        {paymentMethod === "1month to pay" && (
+          <div className="mt-4 border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="font-semibold text-lg">Purchase summary (1 month to pay)</h4>
+              <div className="text-sm text-gray-600">
+                Due date: <span className="font-medium">{formatFriendlyDate(previewDueDateISO)}</span>
+              </div>
+            </div>
+
+            <div className="overflow-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="text-left px-3 py-2">Item</th>
+                    <th className="text-right px-3 py-2">Qty</th>
+                    <th className="text-right px-3 py-2">Unit Price</th>
+                    <th className="text-right px-3 py-2">Line Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lines.map((l, i) => (
+                    <tr key={i} className="border-t">
+                      <td className="px-3 py-2">{l.name || "-"}</td>
+                      <td className="px-3 py-2 text-right">{toQty(l.qty) || 1}</td>
+                      <td className="px-3 py-2 text-right">{fmtMoney(toPrice(l.unitPrice))}</td>
+                      <td className="px-3 py-2 text-right">{fmtMoney(lineTotal(l))}</td>
+                    </tr>
+                  ))}
+
+                  <tr className="border-t">
+                    <td colSpan={3} className="px-3 py-2 text-right font-semibold">
+                      Subtotal
+                    </td>
+                    <td className="px-3 py-2 text-right font-medium">{fmtMoney(subtotal)}</td>
+                  </tr>
+
+                  <tr>
+                    <td colSpan={3} className="px-3 py-2 text-right">
+                      <div className="text-sm text-gray-600">Surcharge (1%)</div>
+                    </td>
+                    <td className="px-3 py-2 text-right">{fmtMoney(surcharge)}</td>
+                  </tr>
+
+                  <tr className="border-t bg-gray-50">
+                    <td colSpan={3} className="px-3 py-2 text-right font-semibold">
+                      Total (incl. surcharge)
+                    </td>
+                    <td className="px-3 py-2 text-right font-bold">{fmtMoney(total)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         <div className="mt-6 flex justify-end gap-3">
           <button
             onClick={onClose}
