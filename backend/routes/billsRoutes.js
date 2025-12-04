@@ -1,7 +1,9 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const { addBillPayment } = require("../controllers/billController");
+const { addBillPayment, getMemberBills } = require('../controllers/billController');
 
-router.post("/add", addBillPayment);
+// keep router paths small; mount in app with prefix like /api/bills
+router.post('/add', addBillPayment);
+router.get('/member/:memberId', getMemberBills);
 
 module.exports = router;

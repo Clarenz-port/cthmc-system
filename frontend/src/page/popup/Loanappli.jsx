@@ -1,3 +1,4 @@
+// src/page/popup/LoanApplication.jsx
 import React, { useEffect, useState } from "react";
 import { FaArrowLeft } from "react-icons/fa";
 import axios from "axios";
@@ -25,34 +26,62 @@ export default function LoanApplication({ onBack, memberId = null, memberName = 
         let response;
 
         if (memberId) {
-          // expected server route: GET /api/loans/member/:id
           response = await axios.get(`/api/loans/member/${memberId}`, {
             headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+            validateStatus: null,
           });
-          // your controller previously returned { loan } — handle both shapes:
+
+          if (response.status === 204 || response.status === 404) {
+            if (!mounted) return;
+            setLoanRecords([]);
+            setError(null);
+            return;
+          }
+
+          if (response.status >= 400) {
+            throw new Error(`Server returned ${response.status}`);
+          }
+
           const payload = response.data;
           const arr = [];
+
           if (Array.isArray(payload)) {
-            // if backend returns array of loans
             arr.push(...payload);
           } else if (payload?.loan) {
             arr.push(payload.loan);
           } else if (payload?.loans) {
             arr.push(...payload.loans);
-          } else if (payload) {
-            // maybe API returns single loan or object - guard
+          } else if (payload && typeof payload === "object" && Object.keys(payload).length === 0) {
+            // empty object -> no records
+          } else if (payload && (payload.message || payload.error)) {
+            // backend returned a message -> treat as empty
+          } else if (payload && (payload.id || payload.loanAmount || payload.createdAt)) {
             arr.push(payload);
           }
+
           if (!mounted) return;
-          setLoanRecords(arr.filter(Boolean));
+          const cleaned = arr.filter(Boolean);
+          setLoanRecords(cleaned);
+          setError(null);
         } else {
-          // fallback: old endpoint that returns all member loans
           response = await axios.get("/api/loans/members", {
             headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+            validateStatus: null,
           });
+
+          if (response.status === 204 || response.status === 404) {
+            if (!mounted) return;
+            setLoanRecords([]);
+            setError(null);
+            return;
+          }
+
+          if (response.status >= 400) throw new Error(`Server returned ${response.status}`);
+
           const arr = Array.isArray(response.data) ? response.data : response.data?.loans ?? [];
           if (!mounted) return;
           setLoanRecords(arr);
+          setError(null);
         }
       } catch (err) {
         console.error("❌ Error fetching loan history:", err);
@@ -69,13 +98,13 @@ export default function LoanApplication({ onBack, memberId = null, memberName = 
     return () => {
       mounted = false;
     };
-  }, [memberId]);
+  }, [memberId, onLoanUpdated]);
 
-  // compute amortization schedule for a loan (keeps same algorithm)
+  // compute amortization schedule for a loan
   const computeSchedule = async (loan) => {
     const principal = parseFloat(loan.loanAmount) || 0;
     const months = parseInt(loan.duration) || 0;
-    const monthlyRate = 0.02; // 2% monthly as you used before
+    const monthlyRate = 0.02; // 2% monthly
 
     // Fetch payments for this loan
     let payments = [];
@@ -87,7 +116,6 @@ export default function LoanApplication({ onBack, memberId = null, memberName = 
       if (Array.isArray(res.data)) payments = res.data;
       else if (Array.isArray(res.data?.payments)) payments = res.data.payments;
     } catch (err) {
-      // ignore and continue with empty payments
       console.warn("Failed to fetch payments:", err);
     }
 
@@ -129,15 +157,18 @@ export default function LoanApplication({ onBack, memberId = null, memberName = 
     setSelectedLoan(loan);
   };
 
-  // allow parent to update loan in this list (if something changed)
+  // allow parent to update loan in this list
   const handleLoanUpdateLocal = (updatedLoan) => {
     setLoanRecords((prev) => prev.map((l) => (l.id === updatedLoan.id ? { ...l, ...updatedLoan } : l)));
     if (typeof onLoanUpdated === "function") onLoanUpdated(updatedLoan);
   };
 
+  // helper to read check number from different possible fields
+  const readCheckNumber = (loan) =>
+    loan?.checkNumber ?? loan?.check_number ?? loan?.checkNo ?? loan?.check_no ?? loan?.check ?? "—";
+
   return (
     <div className="flex-1 border-10 bg-white border-[#b8d8ba] rounded-lg shadow p-3 relative">
-      {/* Back */}
       <button
         onClick={() => (typeof onBack === "function" ? onBack() : null)}
         className="absolute top-4 left-4 text-[#5a7350] hover:text-[#7e9e6c] transition text-2xl"
@@ -147,9 +178,7 @@ export default function LoanApplication({ onBack, memberId = null, memberName = 
       </button>
 
       <div className="max-w-auto p-6">
-        <h2 className="text-4xl font-bold text-center text-[#5a7350] mb-4">
-          {"Loan History"}
-        </h2>
+        <h2 className="text-4xl font-bold text-center text-[#5a7350] mb-4">Loan History</h2>
 
         {loading ? (
           <p className="text-center text-gray-600 mt-6">Loading loan records...</p>
@@ -211,12 +240,9 @@ export default function LoanApplication({ onBack, memberId = null, memberName = 
 
       {/* Loan Details Modal */}
       {selectedLoan && (
-        <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-50">
+        <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-50 px-4">
           <div className="bg-white rounded-2xl w-[700px] max-h-[85vh] overflow-y-auto shadow-2xl relative p-8">
-            <button
-              onClick={() => setSelectedLoan(null)}
-              className="absolute top-3 right-5 text-gray-500 hover:text-black text-3xl"
-            >
+            <button onClick={() => setSelectedLoan(null)} className="absolute top-3 right-5 text-gray-500 hover:text-black text-3xl">
               &times;
             </button>
 
@@ -228,6 +254,10 @@ export default function LoanApplication({ onBack, memberId = null, memberName = 
               <p><strong>Duration:</strong> {selectedLoan.duration} months</p>
               <p><strong>Start Month:</strong> {selectedLoan.startMonth || "N/A"}</p>
               <p><strong>End Month:</strong> {selectedLoan.endMonth || "N/A"}</p>
+
+              {/* <-- NEW: show check number if present */}
+              <p><strong>Check Number:</strong> {readCheckNumber(selectedLoan)}</p>
+
               <hr className="my-3" />
 
               <h3 className="text-xl font-bold text-[#56794a] mb-2">Amortization Schedule</h3>

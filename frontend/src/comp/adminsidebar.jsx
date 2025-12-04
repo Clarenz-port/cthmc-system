@@ -92,7 +92,7 @@ export default function Sidebar({
             {subItem("Approved Loans", "approvedLoan")}
 
             {/* THIS opens like Manage Notice */}
-            {subItem("Duedate Loans", "totalloan")}
+            {subItem("Duedates", "totalloan")}
           </div>
 
           {/* Shares */}

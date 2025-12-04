@@ -48,6 +48,18 @@ export default function Member() {
   const [shareHistoryRows, setShareHistoryRows] = useState([]);
   const [loadingShareHistory, setLoadingShareHistory] = useState(false);
 
+  // bills for member (new)
+  const [billsRows, setBillsRows] = useState([]);
+  const [loadingBills, setLoadingBills] = useState(false);
+
+  // purchases for member (added)
+  const [purchasesRows, setPurchasesRows] = useState([]);
+  const [loadingPurchases, setLoadingPurchases] = useState(false);
+
+  // dividends for member (added)
+  const [dividendsRows, setDividendsRows] = useState([]);
+  const [loadingDividends, setLoadingDividends] = useState(false);
+
   const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><rect fill='%23e5e7eb' width='100%' height='100%' rx='16' ry='16'/><text x='50%' y='50%' font-size='18' text-anchor='middle' fill='%237e9e6c' dy='.35em'>Avatar</text></svg>`;
   const DEFAULT_AVATAR = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 
@@ -203,6 +215,135 @@ export default function Member() {
     setIsSharePopupOpen(true);
   };
 
+  // open bill history for current member (fetch then open)
+  const handleOpenBillHistory = async () => {
+    if (!user) return;
+    const memberId = user.id ?? user.userId ?? user.memberId;
+    setLoadingBills(true);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        alert("You must be logged in.");
+        return;
+      }
+      const res = await axios.get(`http://localhost:8000/api/bills/member/${memberId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        validateStatus: null,
+      });
+      const raw = Array.isArray(res.data) ? res.data : res.data?.bills ?? res.data ?? [];
+      // normalization: keep as array of objects
+      const normalized = Array.isArray(raw) ? raw : [];
+      setBillsRows(normalized);
+      setShowBillHistory(true);
+    } catch (err) {
+      console.error("Failed to fetch bills for member:", err?.response?.data || err);
+      setBillsRows([]);
+      setShowBillHistory(true);
+    } finally {
+      setLoadingBills(false);
+    }
+  };
+
+  // open purchase history for current member (fetch then open)
+  const handleOpenPurchaseHistory = async () => {
+    if (!user) return;
+    const memberId = user.id ?? user.userId ?? user.memberId;
+    setLoadingPurchases(true);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        alert("You must be logged in.");
+        return;
+      }
+      const res = await axios.get(`/api/purchases/member/${encodeURIComponent(memberId)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        validateStatus: null,
+      });
+
+      // normalize response: array or { purchases: [...] }
+      const raw = Array.isArray(res.data) ? res.data : res.data?.purchases ?? res.data ?? [];
+      let rows = Array.isArray(raw) ? raw : [];
+
+      // basic normalization for items/fields to keep PurchaseHistory component stable
+      rows = rows.map((p) => {
+        let items = p.items ?? p.item ?? p.lines ?? [];
+        if (typeof items === "string") {
+          try {
+            const parsed = JSON.parse(items);
+            items = Array.isArray(parsed) ? parsed : [];
+          } catch {
+            items = [];
+          }
+        }
+        if (!Array.isArray(items) && items && typeof items === "object") {
+          const maybeArray = Object.keys(items)
+            .sort()
+            .map((k) => items[k])
+            .filter((v) => v != null);
+          items = Array.isArray(maybeArray) ? maybeArray : [];
+        }
+        return {
+          ...p,
+          id: p.id ?? p._id ?? p.purchaseId,
+          items,
+          total: Number(p.total ?? p.totalAmount ?? p.totalComputed ?? 0),
+          createdAt: p.createdAt ?? p.created_at,
+          dueDate: p.dueDate ?? null,
+          status: p.status ?? p.paymentStatus ?? "unknown",
+        };
+      });
+
+      setPurchasesRows(rows);
+      setShowPurchaseHistory(true);
+    } catch (err) {
+      console.error("Failed to fetch purchases for member:", err?.response?.data || err);
+      setPurchasesRows([]);
+      setShowPurchaseHistory(true);
+    } finally {
+      setLoadingPurchases(false);
+    }
+  };
+
+  // open dividend history for current member (fetch then open)
+  const handleOpenDividendHistory = async () => {
+    if (!user) return;
+    const memberId = user.id ?? user.userId ?? user.memberId;
+    setLoadingDividends(true);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        alert("You must be logged in.");
+        return;
+      }
+
+      const res = await axios.get(`/api/dividends/member/${encodeURIComponent(memberId)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        validateStatus: null,
+      });
+
+      const raw = Array.isArray(res.data) ? res.data : res.data?.dividends ?? res.data ?? [];
+      let rows = Array.isArray(raw) ? raw : [];
+
+      rows = rows.map((d) => ({
+        ...d,
+        id: d.id ?? d._id ?? d.dividendId,
+        amount: Number(d.amount ?? d.dividend ?? 0),
+        date: d.date ?? d.createdAt ?? d.created_at ?? null,
+        note: d.note ?? d.remarks ?? "",
+        memberId: d.memberId ?? d.userId ?? d.member ?? memberId,
+      }));
+
+      setDividendsRows(rows);
+      setIsDivPopupOpen(true);
+    } catch (err) {
+      console.error("Failed to fetch dividends for member:", err?.response?.data || err);
+      setDividendsRows([]);
+      setIsDivPopupOpen(true);
+    } finally {
+      setLoadingDividends(false);
+    }
+  };
+
   const handleLoanNowClick = () => {
     if (hasActiveLoan) {
       alert("⚠️ You cannot apply for a new loan until your approved loan is fully paid or closed.");
@@ -312,7 +453,7 @@ export default function Member() {
                   <FaHistory /> View History
                 </button>
 
-                <div className="mt-22 bg-green-50 p-4 rounded-md">
+                <div className="mt-22 bg-[#d6ead8] p-4 rounded-md">
                   <div className="text-xl font-medium text-gray-700">Your Shares</div>
                   <div className="text-4xl font-extrabold text-green-800 mt-2">
                     ₱{loadingShares ? "Loading..." : formatMoney(memberSharesTotal)}
@@ -334,30 +475,23 @@ export default function Member() {
 
               <div className="space-y-3">
                 <button
-                  onClick={() => setIsDivPopupOpen(true)}
-                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-md border border-green-600 text-green-800 font-semibold hover:bg-green-50"
+                  onClick={() => { setIsPaymentPopupOpen(false); handleOpenDividendHistory(); }}
+                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-4 rounded-md border border-green-600 text-green-800 font-semibold hover:bg-green-50"
                 >
                   <FaFileInvoiceDollar /> Dividend History
                 </button>
 
                 <button
                   onClick={() => setIsPaymentPopupOpen(true)}
-                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-md border border-green-700 text-green-800 font-semibold hover:bg-green-50"
+                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-4 rounded-md border border-green-700 text-green-800 font-semibold hover:bg-green-50"
                 >
                   <FaMoneyBillWave /> Payment History
                 </button>
 
                 <button
-                  onClick={() => setShowLoanApplication(true)}
-                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-md bg-white border border-green-700 text-green-800 font-semibold hover:bg-green-50"
-                >
-                  <FaPlusCircle /> Loan Applications
-                </button>
-
-                <button
                   onClick={handleLoanNowClick}
                   disabled={hasActiveLoan}
-                  className={`w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-md font-semibold ${
+                  className={`w-full inline-flex items-center justify-center gap-2 px-4 py-4 rounded-md font-semibold ${
                     hasActiveLoan
                       ? "bg-gray-300 text-white border-gray-300 cursor-not-allowed"
                       : "bg-green-700 text-white hover:bg-green-800"
@@ -369,18 +503,18 @@ export default function Member() {
               </div>
             </div>
 
-            <div className="mt-6 w-full bg-gray-50 p-3 rounded-md border">
+            <div className="mt-6 w-full bg-gray-50 p-6 rounded-md border">
               <div className="flex items-center gap-3">
-                <span className="inline-flex items-center justify-center p-2 rounded-full bg-green-100 text-green-800">
+                <span className="inline-flex items-center justify-center p-3 rounded-full bg-green-100 text-green-800">
                   <FaRegCalendarAlt />
                 </span>
                 <div>
-                  <div className="text-xs text-gray-600">Active Loan</div>
-                  <div className="text-sm font-semibold">
+                  <div className="text-xs font-medium text-gray-600">Active Loan</div>
+                  <div className="text-sm font-bold">
                     {activeLoan ? activeLoan.status : "No active loan"}
                   </div>
                   {activeLoan && (
-                    <div className="text-xs text-gray-500 mt-1">
+                    <div className="text-xs font-medium text-gray-500 mt-1">
                       Next payment:{" "}
                       {activeLoan.dueDate ??
                         activeLoan.nextPaymentDate ??
@@ -446,15 +580,15 @@ export default function Member() {
             <h3 className="text-2xl font-semibold text-gray-700 mb-5">Loans Breakdown</h3>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-green-50 rounded-lg p-12 text-center shadow-sm">
+              <div className="bg-[#d6ead8] rounded-lg p-12 text-center shadow-sm">
                 <div className="text-4xl font-bold">₱5,000</div>
                 <div className="text-md text-gray-600 mt-1">Interest (2%)</div>
               </div>
-              <div className="bg-green-50 rounded-lg p-12 text-center shadow-sm">
+              <div className="bg-[#d6ead8] rounded-lg p-12 text-center shadow-sm">
                 <div className="text-4xl font-bold">₱10,000</div>
                 <div className="text-md text-gray-600 mt-1">Interest (2%)</div>
               </div>
-              <div className="bg-green-50 rounded-lg p-12 text-center shadow-sm md:col-span-1">
+              <div className="bg-[#d6ead8] rounded-lg p-12 text-center shadow-sm md:col-span-1">
                 <div className="text-4xl font-bold">₱15,000</div>
                 <div className="text-md text-gray-600 mt-1">Interest (2%)</div>
               </div>
@@ -462,11 +596,11 @@ export default function Member() {
 
             <div className="mt-6 flex gap-3">
               <button
-                onClick={() => setShowLoanHistory(true)}
-                className="inline-flex items-center gap-2 px-10 py-4 rounded-md border border-gray-300 text-gray-800 font-semibold hover:bg-gray-50"
-              >
-                <FaHistory /> Loan History
-              </button>
+                  onClick={() => setShowLoanApplication(true)}
+                  className="inline-flex items-center gap-2 px-10 py-4 rounded-md border border-gray-300 text-gray-800 font-semibold hover:bg-gray-50"
+                >
+                  <FaHistory /> Loan History
+                </button>
             </div>
           </Card>
         </div>
@@ -480,37 +614,40 @@ export default function Member() {
         loading={loadingShareHistory}
         rows={shareHistoryRows}
       />
-      <DividendHistoryPopup isOpen={isDivPopupOpen} onClose={() => setIsDivPopupOpen(false)} />
+      {/* pass rows + loading to DividendHistoryPopup */}
+      <DividendHistoryPopup
+        isOpen={isDivPopupOpen}
+        onClose={() => setIsDivPopupOpen(false)}
+        rows={dividendsRows}
+        loading={loadingDividends}
+      />
 
       {/* Payment History quick modal */}
       {isPaymentPopupOpen && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/45 z-50 px-4">
           <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6 relative">
-            <button
-              aria-label="Close payment history"
-              onClick={() => setIsPaymentPopupOpen(false)}
-              className="absolute right-4 top-4 text-gray-600 hover:text-gray-800"
-            >
-              <FaTimes />
-            </button>
 
             <h2 className="text-2xl font-bold text-[#22543d] mb-4">Payment History</h2>
             <div className="space-y-3">
+              {/* PURCHASE HISTORY */}
               <button
                 onClick={() => {
-                  setShowPurchaseHistory(true);
+                  // fetch purchases for current member then open modal
                   setIsPaymentPopupOpen(false);
+                  handleOpenPurchaseHistory();
                 }}
-                className="w-full py-3 text-lg font-semibold bg-green-700 text-white rounded-md hover:bg-green-800"
+                className="w-full py-3 text-lg font-semibold bg-green-600 border border-gray-300 shadow-md text-white rounded-md hover:bg-green-800"
               >
                 🛒 Purchase History
               </button>
+
+              {/* BILLS PAYMENT */}
               <button
                 onClick={() => {
-                  setShowBillHistory(true);
                   setIsPaymentPopupOpen(false);
+                  handleOpenBillHistory();
                 }}
-                className="w-full py-3 text-lg font-semibold bg-green-600 text-white rounded-md hover:bg-green-700"
+                className="w-full py-3 text-lg font-semibold border border-gray-300 shadow-md bg-green-600 text-white rounded-md hover:bg-green-700"
               >
                 🧾 Bills Payment
               </button>
@@ -519,7 +656,7 @@ export default function Member() {
             <div className="mt-4 text-right">
               <button
                 onClick={() => setIsPaymentPopupOpen(false)}
-                className="px-4 py-2 rounded-md text-sm bg-gray-100 hover:bg-gray-200"
+                className="px-4 py-2 border-gray-400 shadow-md rounded-md text-sm bg-gray-300 hover:bg-gray-400"
               >
                 Close
               </button>
@@ -557,7 +694,8 @@ export default function Member() {
               <FaTimes size={18} />
             </button>
 
-            <PurchaseHistory onBack={() => setShowPurchaseHistory(false)} />
+            {/* pass rows + loading to PurchaseHistory (component should accept these props) */}
+            <PurchaseHistory rows={purchasesRows} loading={loadingPurchases} onBack={() => setShowPurchaseHistory(false)} />
           </div>
         </div>
       )}
@@ -574,7 +712,7 @@ export default function Member() {
               <FaTimes size={18} />
             </button>
 
-            <BillHistory onBack={() => setShowBillHistory(false)} />
+            <BillHistory rows={billsRows} loading={loadingBills} onBack={() => setShowBillHistory(false)} />
           </div>
         </div>
       )}
@@ -598,3 +736,4 @@ export default function Member() {
     </div>
   );
 }
+          

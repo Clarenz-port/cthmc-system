@@ -1,4 +1,4 @@
-// Approvedloan.jsx
+// src/page/popup/approvedloan.jsx
 import React, { useEffect, useState } from "react";
 import { FaArrowLeft } from "react-icons/fa";
 import axios from "axios";
@@ -18,6 +18,21 @@ export default function Duedate({ onBack, onView }) {
       ? Number(num).toLocaleString("en-PH", { style: "currency", currency: "PHP" })
       : "₱0.00";
 
+  // helper: detect one-month payment method (1 month to pay)
+  const isOneMonthMethod = (pm) => {
+    if (!pm) return false;
+    const s = String(pm).toLowerCase();
+    return (
+      s.includes("1month") ||
+      s.includes("1 month") ||
+      s.includes("one month") ||
+      s.includes("month to pay") ||
+      s.includes("share-deduction") ||
+      s.includes("share")
+    );
+  };
+
+  // build amortization schedule for loan
   const buildSchedule = (loan, paymentsSum = 0) => {
     const principal = parseFloat(loan.loanAmount) || 0;
     const months = parseInt(loan.duration, 10) || 0;
@@ -79,6 +94,7 @@ export default function Duedate({ onBack, onView }) {
         setError(null);
         const token = (localStorage.getItem("token") || "").trim();
 
+        // 1) fetch approved loans (preferred)
         let approved = [];
         try {
           const res = await axios.get("http://localhost:8000/api/loans/approved-loans", {
@@ -86,6 +102,7 @@ export default function Duedate({ onBack, onView }) {
           });
           approved = Array.isArray(res.data) ? res.data : [];
         } catch (err) {
+          // fallback: fetch all loans and filter by status
           try {
             const resAll = await axios.get("http://localhost:8000/api/loans/members", {
               headers: { Authorization: `Bearer ${token}` },
@@ -100,49 +117,191 @@ export default function Duedate({ onBack, onView }) {
 
         if (!mounted) return;
 
-        setLoanRecords(approved);
         setLoading(false);
-
         setLoadingNextDue(true);
-        const enhanced = await Promise.all(
-          approved.map(async (loan) => {
+
+        // 2) fetch purchases from purchase endpoints (merge them)
+        let purchases = [];
+        try {
+          const purchaseEndpoints = [
+            "http://localhost:8000/api/purchases", // common
+            "/api/purchases",
+            "/api/purchases/all",
+            "/api/purchases/list",
+          ];
+          let pres = null;
+          for (const ep of purchaseEndpoints) {
             try {
-              const resPay = await axios.get(`http://localhost:8000/api/loans/${loan.id}/payments`, {
-                headers: { Authorization: `Bearer ${token}` },
-              });
-              const payments = Array.isArray(resPay.data)
-                ? resPay.data
-                : Array.isArray(resPay.data?.payments)
-                ? resPay.data.payments
-                : [];
-              const paymentsSum = payments.reduce((acc, p) => {
-                const amt = parseFloat(p.amountPaid ?? p.amount ?? 0) || 0;
-                return acc + amt;
-              }, 0);
-
-              const sched = buildSchedule(loan, paymentsSum);
-              const next = findNextDueFromSchedule(sched);
-
-              const nextDueDate = next ? next.dueDate : sched.length > 0 ? sched[0].dueDate : null;
-              const days = nextDueDate ? daysFromToday(new Date(nextDueDate)) : null;
-
-              return { ...loan, nextDueDate, daysRemaining: days };
-            } catch (err) {
-              try {
-                const approvalDate = loan.approvalDate ? new Date(loan.approvalDate) : new Date(loan.createdAt || Date.now());
-                const fallbackNext = new Date(approvalDate.getFullYear(), approvalDate.getMonth() + 1, approvalDate.getDate());
-                const days = daysFromToday(fallbackNext);
-                return { ...loan, nextDueDate: fallbackNext, daysRemaining: days };
-              } catch (err2) {
-                console.warn("failed to compute fallback next due", err2);
-                return { ...loan, nextDueDate: null, daysRemaining: null };
+              const r = await axios.get(ep, { headers: token ? { Authorization: `Bearer ${token}` } : undefined });
+              if (r && (Array.isArray(r.data) || r.data?.purchases)) {
+                pres = r;
+                break;
               }
+            } catch (e) {
+              // try next
+            }
+          }
+          if (pres) {
+            const raw = Array.isArray(pres.data) ? pres.data : pres.data?.purchases ?? [];
+            purchases = Array.isArray(raw) ? raw : [];
+          } else {
+            purchases = []; // no purchase endpoint available
+          }
+        } catch (e) {
+          purchases = [];
+        }
+
+        // Normalize purchases -> same shape as loans for display
+        const normalizedPurchases = (purchases || []).map((p) => {
+          // determine member name
+          const memberName = p.memberName || p.customerName || p.name || p.firstName || p.userName || (p.user && (p.user.firstName || p.user.name)) || "Unknown";
+
+          // pick id
+          const id = p.id ?? p._id ?? p.purchaseId ?? p.purchase_id;
+
+          // total/pay amount
+          const total = Number(p.total ?? p.totalAmount ?? p.amount ?? 0);
+
+          // detect payment method (various field names)
+          const pm = p.paymentMethod ?? p.payment_method ?? p.method ?? p.paymentType ?? p.payment ?? null;
+          const oneMonth = isOneMonthMethod(pm);
+
+          // createdAt normalization
+          const createdRaw = p.createdAt ?? p.created_at ?? p.date ?? null;
+          const created = createdRaw ? new Date(createdRaw) : null;
+
+          // due date normalization (may be string)
+          let due = p.dueDate ?? p.due_date ?? p.due ?? p.paymentDue ?? p.paidAt ?? null;
+          if (due && typeof due === "string") {
+            const parsed = new Date(due);
+            if (!Number.isNaN(parsed.getTime())) due = parsed;
+            else due = null;
+          }
+          if (due && !(due instanceof Date)) {
+            try {
+              due = new Date(due);
+              if (Number.isNaN(due.getTime())) due = null;
+            } catch {
+              due = null;
+            }
+          }
+
+          // if one-month method and no due date supplied, compute createdAt + 30 days
+          let nextDueDate = due instanceof Date ? due : null;
+          if (oneMonth && !nextDueDate) {
+            const base = created instanceof Date && !Number.isNaN(created.getTime()) ? created : new Date();
+            const d = new Date(base);
+            d.setDate(d.getDate() + 30);
+            nextDueDate = d;
+          }
+
+          // status normalization: if not provided but oneMonth => mark as "not paid"
+          const statusRaw = p.status ?? p.paymentStatus ?? p.payment_status ?? "";
+          const status = statusRaw ? String(statusRaw) : oneMonth ? "not paid" : (statusRaw === "" ? "unknown" : statusRaw);
+
+          return {
+            ...p,
+            id,
+            memberName,
+            total,
+            loanAmount: p.loanAmount ?? null,
+            type: "Purchase",
+            payAmount: total,
+            nextDueDate: nextDueDate ? new Date(nextDueDate) : null,
+            daysRemaining: nextDueDate ? daysFromToday(new Date(nextDueDate)) : null,
+            paymentMethod: pm,
+            isOneMonth: oneMonth,
+            status: status || (oneMonth ? "not paid" : "unknown"),
+          };
+        });
+
+        // 3) enhance loans (compute payAmount/nextDue for each loan)
+        const token2 = (localStorage.getItem("token") || "").trim();
+        const enhancedLoans = await Promise.all(
+          (approved || []).map(async (loan) => {
+            try {
+              // determine if loan object actually looks like a purchase inside loan array
+              const looksLikePurchase = Boolean(loan.purchaseId) || Boolean(loan.items) || Boolean(loan.total) || String(loan.type)?.toLowerCase() === "purchase";
+
+              // fetch payments for loan if it's a proper loan
+              let payments = [];
+              if (!looksLikePurchase) {
+                try {
+                  const resPay = await axios.get(`http://localhost:8000/api/loans/${loan.id}/payments`, {
+                    headers: { Authorization: `Bearer ${token2}` },
+                  });
+                  payments = Array.isArray(resPay.data) ? resPay.data : resPay.data?.payments ?? [];
+                } catch (e) {
+                  payments = [];
+                }
+              } else {
+                // if it's actually a purchase disguised in loans array, attempt to read dueDate from it
+                payments = [];
+              }
+
+              const paymentsSum = payments.reduce((acc, p) => acc + (parseFloat(p.amountPaid ?? p.amount ?? 0) || 0), 0);
+
+              if (!looksLikePurchase) {
+                const sched = buildSchedule(loan, paymentsSum);
+                const next = findNextDueFromSchedule(sched);
+                const nextDue = next ? next.dueDate : sched.length > 0 ? sched[0].dueDate : null;
+                const payAmountCandidate = sched && sched.length > 0 ? sched[0].totalPayment : loan.amortization ?? loan.loanAmount ?? 0;
+                const payAmount = Number(payAmountCandidate) || 0;
+                const days = nextDue ? daysFromToday(new Date(nextDue)) : null;
+                return {
+                  ...loan,
+                  type: "Loan",
+                  payAmount,
+                  nextDueDate: nextDue ? new Date(nextDue) : null,
+                  daysRemaining: days,
+                  _schedule: sched,
+                };
+              } else {
+                // treat as purchase
+                let nextDue = loan.dueDate ?? loan.paidAt ?? loan.paid_at ?? loan.paymentDue ?? null;
+                if (nextDue && typeof nextDue === "string") {
+                  const parsed = new Date(nextDue);
+                  if (!Number.isNaN(parsed.getTime())) nextDue = parsed;
+                }
+                const payAmount = Number(loan.total ?? loan.amount ?? loan.loanAmount ?? 0) || 0;
+                const days = nextDue ? daysFromToday(new Date(nextDue)) : null;
+                return {
+                  ...loan,
+                  type: "Purchase",
+                  payAmount,
+                  nextDueDate: nextDue ? new Date(nextDue) : null,
+                  daysRemaining: days,
+                  _schedule: [],
+                };
+              }
+            } catch (err) {
+              // fallback: keep raw loan but tag as Loan
+              const approxNext = loan.approvalDate ? new Date(loan.approvalDate) : loan.createdAt ? new Date(loan.createdAt) : null;
+              const fallbackNext = approxNext ? new Date(approxNext.getFullYear(), approxNext.getMonth() + 1, approxNext.getDate()) : null;
+              return {
+                ...loan,
+                type: loan.items || loan.total ? "Purchase" : "Loan",
+                payAmount: Number(loan.loanAmount ?? loan.total ?? 0) || 0,
+                nextDueDate: fallbackNext,
+                daysRemaining: fallbackNext ? daysFromToday(fallbackNext) : null,
+                _schedule: [],
+              };
             }
           })
         );
 
+        // 4) merge loan + purchase arrays into a single array
+        const merged = [...enhancedLoans, ...normalizedPurchases];
+
+        // optional: sort by nextDueDate ascending (nulls last)
+        merged.sort((a, b) => {
+          const da = a.nextDueDate ? new Date(a.nextDueDate).getTime() : Infinity;
+          const db = b.nextDueDate ? new Date(b.nextDueDate).getTime() : Infinity;
+          return da - db;
+        });
+
         if (!mounted) return;
-        setLoanRecords(enhanced);
+        setLoanRecords(merged);
       } catch (err) {
         console.error("❌ Error fetching approved loans:", err);
         if (mounted) setError("Failed to load approved loans.");
@@ -158,7 +317,7 @@ export default function Duedate({ onBack, onView }) {
     return () => (mounted = false);
   }, []);
 
-  // compute amortization schedule when user clicks View (kept in case you need it elsewhere)
+  // compute amortization schedule when user clicks View (kept for modal fallback)
   const computeSchedule = async (loan) => {
     const principal = parseFloat(loan.loanAmount) || 0;
     const months = parseInt(loan.duration, 10) || 0;
@@ -216,14 +375,14 @@ export default function Duedate({ onBack, onView }) {
     <div className="flex-1 bg-white rounded-lg shadow-lg p-3 relative">
       <button
         onClick={onBack}
-        className="absolute top-4 left-4 text-[#5a7350] hover:text-[#7e9e6c] transition text-2xl"
+        className="absolute top-4 left-4 text-[#5a7350] hover:text-[#7e9b6c] transition text-2xl"
         title="Back"
       >
         <FaArrowLeft />
       </button>
 
       <div className="max-w-auto p-6">
-        <h2 className="text-4xl font-bold text-center text-[#5a7350] mb-4">Duedate Loans</h2>
+        <h2 className="text-4xl font-bold text-center text-[#5a7350] mb-4">Duedates</h2>
 
         {loading ? (
           <p className="text-center text-gray-600 mt-6">Loading Duedate loans...</p>
@@ -237,8 +396,8 @@ export default function Duedate({ onBack, onView }) {
               <thead className="bg-[#7e9e6c] text-white">
                 <tr>
                   <th className="py-3 px-4 text-left">Member</th>
-                  <th className="py-3 px-4 text-left">Loan Amount</th>
-                  <th className="py-3 px-4 text-left">Repayment</th>
+                  <th className="py-3 px-4 text-left">Type</th>
+                  <th className="py-3 px-4 text-left">Pay Amount</th>
                   <th className="py-3 px-4 text-left">Next Due</th>
                   <th className="py-3 px-4 text-center">Action</th>
                 </tr>
@@ -250,11 +409,28 @@ export default function Duedate({ onBack, onView }) {
                     className={`${index % 2 === 0 ? "bg-gray-50" : "bg-white "}  hover:bg-[#e4f2e7] transition`}
                   >
                     <td className="py-3 px-4 border-t  border-gray-200">
-                      {record.memberName || record.name || record.firstName || "N/A"}
+                      {record.memberName || record.name || record.firstName || record.member || "N/A"}
                     </td>
-                    <td className="py-3 px-4 border-t border-gray-200">{formatCurrency(record.loanAmount)}</td>
-                    <td className="py-3 px-4 border-t border-gray-200">{record.duration ? `${record.duration} months` : "N/A"}</td>
 
+                    {/* Type column */}
+                    <td className="py-3 px-4 border-t border-gray-200 font-semibold">
+                      {(record.type ? String(record.type) : (record.items || record.total ? "Purchase" : "Loan")) || "Loan"}
+                      <div className="text-xs text-gray-600 mt-1">
+                        {String(record.type).toLowerCase() === "purchase"
+                          ? `Total: ${formatCurrency(record.total ?? record.amount ?? record.payAmount ?? 0)}${record.isOneMonth ? " • 1-month" : ""}`
+                          : `Loan: ${formatCurrency(record.loanAmount ?? 0)}`}
+                      </div>
+                    </td>
+
+                    {/* Pay Amount column */}
+                    <td className="py-3 px-4 border-t border-gray-200">
+                      <div className="font-medium">{formatCurrency(record.payAmount ?? record.payment ?? record.amortization ?? 0)}</div>
+                      <div className="text-xs text-gray-500">
+                        {String(record.type).toLowerCase() === "purchase" ? "Purchase due / balance" : "Installment (first)"}
+                      </div>
+                    </td>
+
+                    {/* Next Due */}
                     <td className="py-3 px-4 border-t border-gray-200">
                       {loadingNextDue ? (
                         <span className="text-gray-500">calculating…</span>
@@ -275,13 +451,11 @@ export default function Duedate({ onBack, onView }) {
                     </td>
 
                     <td className="py-3 px-4 border-t border-gray-200 text-center">
-                      {/* CALL onView when clicked so Admin can open MemberDetails */}
                       <button
                         onClick={() => {
                           if (typeof onView === "function") {
                             onView(record);
                           } else {
-                            // fallback to old behavior: compute schedule modal (keeps compatibility)
                             computeSchedule(record);
                           }
                         }}
@@ -298,7 +472,7 @@ export default function Duedate({ onBack, onView }) {
         )}
       </div>
 
-      {/* Loan Details Modal (kept but only shown when selectedLoan is set and onView not used) */}
+      {/* Loan Details Modal (kept but only used when admin clicks View and onView not provided) */}
       {selectedLoan && (
         <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-50">
           <div className="bg-white rounded-2xl w-[700px] max-h-[85vh] overflow-y-auto shadow-2xl relative p-8">
@@ -343,9 +517,7 @@ export default function Duedate({ onBack, onView }) {
                       <td className="py-1 px-2 text-right">{formatCurrency(row.interestPayment)}</td>
                       <td className="py-1 px-2 text-right">{formatCurrency(row.remainingBalance)}</td>
                       <td className="py-1 px-2 text-right">{formatCurrency(row.totalPayment)}</td>
-                      <td className="py-1 px-2 text-center">
-                        {row.dueDate ? new Date(row.dueDate).toLocaleDateString("en-PH") : "N/A"}
-                      </td>
+                      <td className="py-1 px-2 text-center">{row.dueDate ? new Date(row.dueDate).toLocaleDateString("en-PH") : "N/A"}</td>
                       <td className="py-1 px-2 text-center">
                         {row.status === "Paid" ? (
                           <span className="text-blue-600 font-semibold">{row.status}</span>

@@ -17,7 +17,15 @@ const BillPayment = sequelize.define("BillPayment", {
   date: {
     type: DataTypes.DATEONLY,
     allowNull: false,
+  },
+  paymentMethod: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    defaultValue: "cash"
   }
+}, {
+  tableName: "BillPayments",
+  timestamps: true
 });
 
 module.exports = BillPayment;

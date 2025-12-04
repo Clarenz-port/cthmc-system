@@ -115,3 +115,85 @@ exports.payPurchase = async (req, res) => {
     return res.status(500).json({ message: "Error marking purchase as paid" });
   }
 };
+exports.getAllPurchases = async (req, res) => {
+  try {
+    // OPTIONAL: restrict to admins only
+    // if (req.user?.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+
+    const purchases = await Purchase.findAll({
+      order: [["createdAt", "DESC"]],
+    });
+
+    // Normalize and ensure one-month purchases have dueDate (if missing)
+    const normalized = purchases.map((p) => {
+      // convert sequelize model instance to plain object if needed
+      const obj = (typeof p.toJSON === "function") ? p.toJSON() : p;
+
+      const pm = obj.paymentMethod ?? obj.payment_method ?? obj.method ?? obj.paymentType ?? obj.payment ?? null;
+      const oneMonth = isOneMonthMethod(pm);
+
+      // determine a dueDate: prefer stored dueDate; if missing and oneMonth, compute createdAt + 30 days
+      let due = obj.dueDate ?? obj.due_date ?? obj.due ?? null;
+      if (!due && oneMonth) {
+        const created = obj.createdAt ?? obj.created_at ?? new Date();
+        const base = new Date(created);
+        const d = new Date(base);
+        d.setDate(d.getDate() + 30);
+        due = d;
+      } else if (due && typeof due === "string") {
+        const parsed = new Date(due);
+        if (!Number.isNaN(parsed.getTime())) due = parsed;
+      }
+
+      return {
+        ...obj,
+        paymentMethod: pm,
+        isOneMonth: oneMonth,
+        dueDate: due instanceof Date ? due : due ? new Date(due) : null,
+      };
+    });
+
+    return res.json(normalized);
+  } catch (err) {
+    console.error("[getAllPurchases] Error:", err);
+    return res.status(500).json({ message: "Error fetching purchases" });
+  }
+};
+
+exports.getPendingPurchases = async (req, res) => {
+  try {
+    const purchases = await Purchase.findAll({
+      where: { status: "not paid" },
+      order: [["createdAt", "DESC"]],
+    });
+
+    // Ensure DUEDATE is always present for 1-month-to-pay
+    const normalized = purchases.map((p) => {
+      const obj = p.toJSON();
+      const pm = obj.paymentMethod;
+
+      // Detect 1-month-to-pay purchases
+      const oneMonth = isOneMonthMethod(pm);
+
+      // If no dueDate, calculate it = createdAt + 30 days
+      let due = obj.dueDate;
+      if (!due && oneMonth) {
+        const base = new Date(obj.createdAt);
+        const d = new Date(base);
+        d.setDate(d.getDate() + 30);
+        due = d;
+      }
+
+      return {
+        ...obj,
+        isOneMonth: oneMonth,
+        dueDate: due,
+      };
+    });
+
+    return res.json(normalized);
+  } catch (err) {
+    console.error("[getPendingPurchases] Error:", err);
+    return res.status(500).json({ message: "Error fetching pending purchases" });
+  }
+};

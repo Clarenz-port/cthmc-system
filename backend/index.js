@@ -10,6 +10,8 @@ const loanRoutes = require("./routes/loanRoutes");
 const sharesRoutes = require("./routes/sharesRoutes");
 const purchasesRoutes = require("./routes/purchaseRoutes");
 const billpayRoutes = require("./routes/billsRoutes");
+const dividendRoutes = require("./routes/dividendRoutes");
+
 const path = require("path");
 
 app.use(express.json());
@@ -26,7 +28,8 @@ app.use("/api/members", memberRoutes);
 app.use("/api/loans", loanRoutes);
 app.use("/api/shares", sharesRoutes);
 app.use("/api/purchases", purchasesRoutes);
-app.use("/api/billpay", billpayRoutes);
+app.use("/api/bills", billpayRoutes);
+app.use("/api/dividends", dividendRoutes);
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 app.get("/", (req, res) => {

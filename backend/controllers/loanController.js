@@ -117,6 +117,13 @@ exports.approveLoan = async (req, res) => {
     }
 
     const { id } = req.params;
+    const { checkNumber } = req.body;
+
+    // require checkNumber
+    if (!checkNumber || String(checkNumber).trim() === "") {
+      return res.status(400).json({ message: "checkNumber is required to approve loan" });
+    }
+
     const loan = await Loan.findByPk(id);
 
     if (!loan) return res.status(404).json({ message: "Loan not found" });
@@ -136,9 +143,11 @@ exports.approveLoan = async (req, res) => {
     const dueDate = new Date(baseCreated.getTime());
     dueDate.setMonth(dueDate.getMonth() + 1);
 
-    // Optional: store who approved
-    // if your Loan model has approvedById / approvedByName fields you can set them:
-    if (req.user.id) loan.approvedBy = req.user.id; // adjust field name to your model if needed
+    // store who approved (optional)
+    if (req.user.id) loan.approvedBy = req.user.id;
+
+    // save check number
+    loan.checkNumber = String(checkNumber).trim();
 
     loan.approvalDate = approvalDate;
     loan.dueDate = dueDate;
@@ -146,7 +155,7 @@ exports.approveLoan = async (req, res) => {
 
     await loan.save();
 
-    console.log("Loan approved:", { id: loan.id, approvalDate, dueDate, approvedBy: req.user.id });
+    console.log("Loan approved:", { id: loan.id, approvalDate, dueDate, approvedBy: req.user.id, checkNumber: loan.checkNumber });
 
     res.json({
       message: "Loan approved successfully",
@@ -157,8 +166,6 @@ exports.approveLoan = async (req, res) => {
     res.status(500).json({ message: "Error approving loan" });
   }
 };
-
-// REJECT (server-side role check)
 exports.rejectLoan = async (req, res) => {
   try {
     // Defense in depth

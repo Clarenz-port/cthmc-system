@@ -1,9 +1,8 @@
-// models/loans.js  (modify your existing file)
+// models/loans.js
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
 
 const Loan = sequelize.define("Loan", {
-  // ... your existing fields ...
   memberName: {
     type: DataTypes.STRING,
     allowNull: false,
@@ -41,10 +40,10 @@ const Loan = sequelize.define("Loan", {
   capitalBuildUp: { type: DataTypes.DECIMAL(12, 2), allowNull: true },
   netAmount: { type: DataTypes.DECIMAL(12, 2), allowNull: true },
 
-  // NEW: current remaining balance (initially equals loanAmount)
+  // balances
   balance: { type: DataTypes.DECIMAL(12, 2), allowNull: true },
   remainbalance: { type: DataTypes.DECIMAL(12, 2), allowNull: true },
-  loanball: { type: DataTypes.DECIMAL(12, 2), allowNull: true, defaultValue: 0,},
+  loanball: { type: DataTypes.DECIMAL(12, 2), allowNull: true, defaultValue: 0 },
 
   paymentsMade: {
     type: DataTypes.INTEGER,
@@ -56,14 +55,30 @@ const Loan = sequelize.define("Loan", {
     defaultValue: "Pending",
   },
 
-   approvalDate: {
-      type: DataTypes.DATE,
-      allowNull: true,
-    },
-    dueDate: {
-      type: DataTypes.DATE,
-      allowNull: true,
-    },
+  approvalDate: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  dueDate: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+
+  // who approved/rejected (optional)
+  approvedBy: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  rejectedBy: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+
+  // NEW: store check number used for approval
+  checkNumber: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
 
   userId: {
     type: DataTypes.INTEGER,
