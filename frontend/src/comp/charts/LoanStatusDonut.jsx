@@ -44,7 +44,7 @@ export default function LoanStatusDonut({ pending = 0, active = 0, duedate = 0 }
   };
 
   return (
-    <div className="bg-white rounded-2xl p-5 flex gap-14 items-center">
+    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-5 flex gap-14 items-center">
       <div className="w-120 h-88 flex items-center justify-center">
         <Doughnut data={data} options={options}  />
       </div>

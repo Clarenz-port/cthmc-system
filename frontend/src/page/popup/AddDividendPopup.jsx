@@ -110,7 +110,7 @@ export default function AddDividendPopup({ isOpen, onClose, memberId, memberName
           {error && <div className="text-sm text-red-600">{error}</div>}
 
           <div className="flex justify-end gap-2 mt-4">
-            <button onClick={() => onClose()} disabled={saving} className="px-4 py-2 border rounded">Cancel</button>
+            <button onClick={() => onClose()} disabled={saving} className="bg-white shadow-md border border-[#e6b6a6] font-semibold hover:bg-[#f8f2f1] text-[#c55f4f] px-4 py-2 rounded border bg-white hover:bg-gray-50">Cancel</button>
             <button onClick={submit} disabled={saving} className="px-4 py-2 bg-[#7e9e6c] text-white rounded disabled:opacity-60">
               {saving ? "Saving..." : "Save Dividend"}
             </button>

@@ -32,7 +32,7 @@ export default function Adminnavbar({ onManageNotice }) {
 
   return (
     <>
-      <header className="bg-[#317256] text-white px-6 py-4 flex justify-between items-center shadow-md fixed top-0 left-0 right-0 z-50 h-22">
+      <header className="bg-emerald-800 text-white px-6 py-4 flex justify-between items-center shadow-md fixed top-0 left-0 right-0 z-50 h-22">
         {/* System Title */}
         <h2 className="text-3xl ml-20 flex-none font-extrabold">CTHMC</h2>
 

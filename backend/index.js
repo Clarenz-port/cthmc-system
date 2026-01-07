@@ -11,6 +11,8 @@ const sharesRoutes = require("./routes/sharesRoutes");
 const purchasesRoutes = require("./routes/purchaseRoutes");
 const billpayRoutes = require("./routes/billsRoutes");
 const dividendRoutes = require("./routes/dividendRoutes");
+const reportRoutes = require("./routes/reportRoutes");
+const NoticeRoutes = require("./routes/noticeRoutes");
 
 const path = require("path");
 
@@ -31,6 +33,8 @@ app.use("/api/purchases", purchasesRoutes);
 app.use("/api/bills", billpayRoutes);
 app.use("/api/dividends", dividendRoutes);
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use("/api/reports", reportRoutes);
+app.use("/api/notices", NoticeRoutes);
 
 app.get("/", (req, res) => {
   res.send("✅ Server is running correctly");

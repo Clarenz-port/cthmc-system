@@ -182,7 +182,7 @@ export default function PendingLoanApplications({ onBack }) {
                 {pendingLoans.map((loan, index) => (
                   <tr
                     key={loan.id || index}
-                    className={`${index % 2 === 0 ? "bg-gray-50" : "bg-white"} hover:bg-[#e4f2e7] transition`}
+                    className={`${index % 2 === 0 ? "bg-gray-50" : "bg-white"} `}
                   >
                     <td className="py-3 px-4 border-t border-gray-200">{loan.memberName || "N/A"}</td>
                     <td className="py-3 px-4 border-t border-gray-200">{loan.purpose || "N/A"}</td>
@@ -253,7 +253,7 @@ export default function PendingLoanApplications({ onBack }) {
                   </thead>
                   <tbody>
                     {schedule.map((row) => (
-                      <tr key={row.month} className="border-b hover:bg-[#f9fcf9]">
+                      <tr key={row.month} className="border-b ">
                         <td className="py-1 px-2">{row.month}</td>
                         <td className="py-1 px-2 text-right">{formatCurrency(row.interestPayment)}</td>
                         <td className="py-1 px-2 text-right">{formatCurrency(row.remainingBalance)}</td>

@@ -1,6 +1,6 @@
 // controllers/adminController.js
 const bcrypt = require("bcryptjs");
-const User = require("../models/User");
+const User = require("../models/users");
 
 // ✅ Add new admin (superadmin only)
 exports.addAdmin = async (req, res) => {

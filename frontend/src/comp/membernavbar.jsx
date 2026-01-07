@@ -1,3 +1,5 @@
+
+import axios from "axios";
 import React, { useState, useRef, useEffect } from "react";
 import { FaBell, FaCog } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
@@ -10,6 +12,29 @@ export default function MemberNavbar() {
   const [member, setMember] = useState(null); // fetched current member
   const settingsRef = useRef();
   const navigate = useNavigate();
+const [notices, setNotices] = useState([]);
+const [unreadCount, setUnreadCount] = useState(0);
+
+useEffect(() => {
+  const fetchNotices = async () => {
+    try {
+      const token = localStorage.getItem("token");
+
+      const res = await axios.get("http://localhost:8000/api/notices", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      setNotices(res.data);
+      setUnreadCount(res.data.length);
+    } catch (err) {
+      console.error("Failed to fetch notices:", err);
+    }
+  };
+
+  fetchNotices();
+}, []);
 
   // Prevent going back after logout
   useEffect(() => {
@@ -70,17 +95,59 @@ export default function MemberNavbar() {
 
   return (
     <>
-      <header className="bg-[#317256] p-9 flex justify-between items-center fixed top-0 left-0 right-0 z-50 h-22">
+      <header className="bg-emerald-800 p-9 flex justify-between items-center fixed top-0 left-0 right-0 z-50 h-22">
         <h1 className="text-3xl font-bold text-white">Profile</h1>
 
-        <div className="flex right-10 space-x-6 relative">
-          <FaBell
-            className="text-white text-3xl cursor-pointer"
-            onClick={() => {
-              setShowNotifPopup(true);
-              setIsSettingsOpen(false);
-            }}
-          />
+       <div className="flex items-center space-x-6 relative">
+  <div className="relative">
+    <FaBell
+      className="text-white text-3xl cursor-pointer"
+      onClick={() => {
+        setShowNotifPopup((prev) => !prev);
+        setIsSettingsOpen(false);
+        setUnreadCount(0);
+      }}
+    />
+
+    {unreadCount > 0 && (
+      <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5">
+        {unreadCount}
+      </span>
+    )}
+
+    {/* 🔔 Notification Popup */}
+    {showNotifPopup && (
+      <div className="absolute right-0 mt-3 w-80 bg-white rounded-lg shadow-xl border z-50">
+        <div className="px-4 py-3 border-b font-semibold text-gray-700">
+          Notices
+        </div>
+
+        <div className="max-h-80 overflow-y-auto">
+          {notices.length === 0 ? (
+            <p className="p-4 text-gray-500 text-sm">No notices yet.</p>
+          ) : (
+            notices.map((notice) => (
+              <div
+                key={notice.id}
+                className="p-4 border-b hover:bg-gray-50"
+              >
+                <h4 className="font-bold text-emerald-700">
+                  {notice.title}
+                </h4>
+                <p className="text-sm text-gray-600 mt-1">
+                  {notice.message}
+                </p>
+                <p className="text-xs text-gray-400 mt-2">
+                  {new Date(notice.createdAt).toLocaleString()}
+                </p>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    )}
+  </div>
+
 
           <div className="relative" ref={settingsRef}>
             <FaCog
@@ -119,47 +186,9 @@ export default function MemberNavbar() {
           </div>
         </div>
       </header>
+      
 
-      {/* Notification Modal */}
-      {showNotifPopup && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/45 z-50">
-          <div className="bg-white border-10 border-[#b8d8ba] rounded-2xl shadow-xl p-8 w-[520px] relative animate-fadeIn">
-            <h2 className="text-3xl font-bold text-[#7e9e6c] mb-6 text-center">
-              Notifications
-            </h2>
 
-            <div className="space-y-2">
-              {[
-                { label: "📄 Loan Request", type: "Loan Request" },
-                { label: "📢 Notice", type: "Notice" },
-                { label: "⚠️ Alert", type: "Alert" },
-              ].map((item) => (
-                <div
-                  key={item.type}
-                  className="flex justify-between items-center border-[#85a265] border-t-2 border-b-2 px-2 py-3 transition"
-                >
-                  <p className="text-gray-800 font-semibold select-none">
-                    {item.label}
-                  </p>
-                  <p
-                    onClick={() => handleViewClick(item.type)}
-                    className="text-[#7e9e6c] font-semibold hover:underline cursor-pointer select-none"
-                  >
-                    View
-                  </p>
-                </div>
-              ))}
-            </div>
-
-            <button
-              onClick={() => setShowNotifPopup(false)}
-              className="absolute top-3 right-4 text-gray-600 hover:text-gray-900 text-xl"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Edit Profile Popup wired to current member */}
       <EditProfilePopup

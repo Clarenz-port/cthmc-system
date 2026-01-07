@@ -404,7 +404,7 @@ export default function MemberDetails({ member, onBack }) {
           ) : (
             <div className="overflow-auto border-gray-400 border rounded-lg">
               <table className="w-full text-lg text-left">
-                <thead className="bg-[#d6ead8]">
+                <thead className="bg-[#dead8]">
                   <tr>
                     <th className="px-3 py-4">Purpose</th>
                     <th className="px-3 py-4">Amount</th>
@@ -597,7 +597,7 @@ export default function MemberDetails({ member, onBack }) {
                   </tbody>
                 </table>
               </div>
-              <div><button className="mt-4 px-4 py-2 border rounded" onClick={() => setIsPurchaseHistoryOpen(false)}>Close</button></div>
+              <div className="mt-4 flex justify-end gap-2"><button className="bg-[#b8d8ba] text-white px-6 py-2 rounded-lg hover:bg-[#8fa182]" onClick={() => setIsPurchaseHistoryOpen(false)}>Close</button></div>
             </div>
           </div>
         )}
@@ -618,7 +618,7 @@ export default function MemberDetails({ member, onBack }) {
                   </tbody>
                 </table>
               </div>
-              <div className="mt-4"><button className="px-4 py-2 border rounded" onClick={() => setIsBillHistoryOpen(false)}>Close</button></div>
+              <div className="mt-4 flex justify-end gap-2"><button className="bg-[#b8d8ba] text-white px-6 py-2 rounded-lg hover:bg-[#8fa182]" onClick={() => setIsBillHistoryOpen(false)}>Close</button></div>
             </div>
           </div>
         )}
@@ -659,8 +659,8 @@ export default function MemberDetails({ member, onBack }) {
       {isLoanAppOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/50" onClick={() => setIsLoanAppOpen(false)} />
-          <div className="relative w-[90vw] max-w-4xl bg-white rounded-2xl shadow-2xl overflow-auto p-4 z-60">
-            <button className="absolute right-4 top-4 text-xl" onClick={() => setIsLoanAppOpen(false)} aria-label="Close loan list">&times;</button>
+          <div className="relative w-[90vw] max-w-4xl bg-white rounded-2xl shadow-2xl overflow-auto z-60">
+
             <LoanApplication
               onBack={() => setIsLoanAppOpen(false)}
               memberId={member.id}

@@ -154,7 +154,7 @@ export default function AccountOnlyPopup({ onClose = () => {}, inline = false })
 
   // Inline rendering (no overlay, no fixed container)
   return (
-    <div className="bg-white p-8 rounded-lg border border-gray-200 max-h-[60vh] overflow-y-auto relative">
+    <div className="bg-white p-8 rounded-lg shadow-lg border border-gray-200 max-h-[60vh] overflow-y-auto relative">
       {/* Back button top-left */}
       <button
         onClick={onClose}

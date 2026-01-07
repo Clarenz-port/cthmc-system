@@ -87,7 +87,15 @@ export default function BillsHistory({
             </table>
           </div>
         )}
-      </div>
+      </div> {/* Close */}
+        <div className="mt-6 flex justify-end">
+          <button
+            onClick={onBack}
+            className="bg-[#b8d8ba] text-white px-6 py-2 rounded-lg hover:bg-[#8fa182]"
+          >
+            Close
+          </button>
+        </div>
     </div>
   );
 }

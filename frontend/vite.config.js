@@ -16,6 +16,7 @@ export default defineConfig({
       },
       animation: {
         'slide-right': 'slide-right 3s linear infinite',
+        
       },
     },
   },

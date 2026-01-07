@@ -14,7 +14,7 @@ import Adminnavbar from "../comp/adminnavbar.jsx";
 import Sidebar from "../comp/adminsidebar.jsx";
 import AccountOnlyPopup from "./popup/accountpopup.jsx";
 import MemberDetails from "../page/popup/adminmember.jsx";
-import ManageNotice from "../page/popup/Managenotice.jsx";
+import ManageNotice from "../page/popup/AdminCreateNotice.jsx";
 import PendingLoanApplications from "../page/popup/pendingloanadmin.jsx";
 import Approvedloan from "../page/popup/approvedloan.jsx";
 import TotalLoan from "../page/popup/Totalloan.jsx";
@@ -32,6 +32,7 @@ export default function Admin() {
   const [members, setMembers] = useState([]);
   const [loanCounts, setLoanCounts] = useState({ pending: 0, approvedOrPaid: 0, total: 0 });
   const [loadingCounts, setLoadingCounts] = useState(true);
+  const [purchaseDueCount, setPurchaseDueCount] = useState(0);
 
   // TOTAL SHARES
   const [sharesTotal, setSharesTotal] = useState(0);
@@ -66,6 +67,78 @@ export default function Admin() {
     fetchMembers();
   }, []);
 
+  useEffect(() => {
+  let mounted = true;
+
+  const fetchCounts = async () => {
+    setLoadingCounts(true);
+    try {
+      const token = (localStorage.getItem("token") || "").trim();
+
+      // FETCH LOANS
+      let pendingCount = 0;
+      let approvedOrPaidCount = 0;
+      let approvedLoans = [];
+
+      try {
+        const resCounts = await axios.get("http://localhost:8000/api/loans/loan-counts", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        pendingCount = resCounts.data.pending ?? 0;
+        approvedOrPaidCount = resCounts.data.approvedOrPaid ?? 0;
+      } catch (err) {
+        console.warn("loan-counts endpoint failed:", err?.message);
+      }
+
+      try {
+        const res = await axios.get("http://localhost:8000/api/loans/approved-loans", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        approvedLoans = Array.isArray(res.data) ? res.data : [];
+      } catch (err) {
+        const resAll = await axios.get("http://localhost:8000/api/loans/members", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const allLoans = Array.isArray(resAll.data) ? resAll.data : resAll.data?.loans ?? [];
+        approvedLoans = allLoans.filter((l) =>
+          ["approved", "paid"].includes(String(l.status).toLowerCase())
+        );
+      }
+
+      // FETCH UNPAID PURCHASES
+      let purchaseDue = [];
+      try {
+        const resPurchases = await axios.get("http://localhost:8000/api/purchases/pending", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        purchaseDue = Array.isArray(resPurchases.data) ? resPurchases.data : [];
+      } catch (err) {
+        console.warn("Failed to fetch pending purchases:", err?.message);
+        purchaseDue = [];
+      }
+
+      if (!mounted) return;
+
+      setLoanCounts({
+        pending: pendingCount || 0,
+        approvedOrPaid: approvedOrPaidCount || approvedLoans.length,
+        total: approvedLoans.length + purchaseDue.length, // MERGED COUNT
+      });
+
+      setPurchaseDueCount(purchaseDue.length);
+
+    } catch (err) {
+      console.error("❌ Error fetching counts:", err);
+      setLoanCounts({ pending: 0, approvedOrPaid: 0, total: 0 });
+      setPurchaseDueCount(0);
+    } finally {
+      if (mounted) setLoadingCounts(false);
+    }
+  };
+
+  fetchCounts();
+  return () => (mounted = false);
+}, []);
   /* -------------------------------------------------------------------------
      FETCH LOAN COUNTS
   ------------------------------------------------------------------------- */
@@ -368,9 +441,10 @@ export default function Admin() {
                   <FaClock />
                 </div>
                 <p className="text-lg font-bold">Duedate</p>
-                <p className="text-5xl font-bold">{loadingCounts ? "..." : loanCounts.total}</p>
+                <p className="text-5xl font-bold">
+                  {loadingCounts ? "..." : loanCounts.total}
+                </p>
               </div>
-
               {/* Total Shares */}
               <div
                 onClick={() => setActiveSection("shares")}

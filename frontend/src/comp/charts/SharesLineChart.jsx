@@ -174,15 +174,10 @@ export default function SharesLineChart({ members = [], dataPoints = null }) {
       <div className="flex justify-between items-start mb-4">
         <div>
           <h3 className="text-2xl font-bold text-gray-700">Shares Growth</h3>
-          <p className="text-sm text-gray-500 mt-1">Showing {monthsToShow} month(s) — total: <span className="font-semibold text-gray-800">{totalShares.toLocaleString()}</span></p>
+          <p className="text-sm text-gray-500 mt-1">Showing year {year}  — total: <span className="font-semibold text-gray-800">{totalShares.toLocaleString()}</span></p>
         </div>
 
         <div className="flex items-center gap-3">
-          <label className="text-sm text-gray-600">Months</label>
-          <select value={monthsToShow} onChange={e => setMonthsToShow(Number(e.target.value))} className="border rounded px-2 py-1 text-sm">
-            {Array.from({length:12},(_,i)=>i+1).map(n => <option key={n} value={n}>{n}</option>)}
-          </select>
-
           <label className="text-sm text-gray-600">Year</label>
           <select value={year} onChange={e => setYear(Number(e.target.value))} className="border rounded px-2 py-1 text-sm">
             {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}

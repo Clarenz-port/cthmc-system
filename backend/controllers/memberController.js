@@ -1,7 +1,7 @@
 // controllers/memberController.js
 const bcrypt = require("bcryptjs");
 const { Op } = require("sequelize");
-const User = require("../models/User");
+const User = require("../models/users");
 const path = require("path");
 const upload = require("../utils/upload");
 

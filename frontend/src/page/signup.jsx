@@ -69,18 +69,36 @@ export default function Signup() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#a5b295] px-4">
-      <div className="max-w-4xl gap- mx-auto mt-10 grid grid-cols-2">
+   <div className="relative min-h-screen flex items-center bg-cover bg-center overflow-hidden "
+  style={{
+    backgroundImage: "url('/images/finance-bg.png')",
+  }}
+>
+  {/* SOFT OVERLAY */}
+  <div className="absolute inset-0 bg-[#DFE8DF]/50"></div>
+
+  {/* LIGHT SWEEP EFFECT */}
+  <div className="absolute inset-0 pointer-events-none">
+    <div className="absolute top-0 left-0 w-[40%] h-full bg-white/40 blur-3xl
+      animate-[lightSweep_18s_ease-in-out_infinite]" />
+  </div>
+
+  {/* EXISTING SHAPES (unchanged) */}
+  <div className="absolute right-0 top-0 w-[60%] h-full opacity-40 pointer-events-none">
+    <div className="absolute -top-24 right-[-120px] w-[500px] h-[500px] rounded-full bg-emerald-700/60"></div>
+    <div className="absolute top-[200px] right-[-200px] w-[600px] h-[600px] rounded-full bg-emerald-800/60"></div>
+  </div>
+      <div className="max-w-4xl gap- mx-auto mt-10 grid grid-cols-2 relative">
 
         {/* Left Panel */}
-        <div className="bg-[#b8d8ba] shadow-lg rounded-3xl p-8 w-[470px]">
-          <h2 className="text-5xl font-extrabold mt-25 text-center text-gray-900">LOGO</h2>
-          <h2 className="text-4xl mt-20 font-bold text-center text-white">Welcome</h2>
-          <p className="text-center text-white mt-2">Already have an account?</p>
-          <div className="mt-5 text-center">
+        <div className="bg-emerald-800 shadow-lg rounded-3xl p-8 w-[470px]">
+          <h2 className="text-7xl font-extrabold mt-25 text-center text-white">LOGO</h2>
+          <h2 className="text-5xl mt-30 font-extrabold text-center text-white">Welcome</h2>
+          <p className="text-center font-semibold text-white mt-3">Already have an account?</p>
+          <div className="mt-8 text-center">
             <Link
               to="/login"
-              className="text-center text-xl font-bold bg-white text-gray-700 px-14 py-5 rounded-4xl hover:bg-[#f0f0f0] transition"
+              className="text-center text-xl font-bold bg-white text-emerald-800 px-14 py-5 rounded-4xl hover:bg-[#f0f0f0] transition"
             >
               Login
             </Link>
@@ -90,9 +108,9 @@ export default function Signup() {
         {/* Signup Form */}
         <form
           onSubmit={handleSubmit}
-          className="bg-white shadow-lg rounded-3xl p-8 w-[460px] space-y-3"
+          className="bg-emerald-50 shadow-lg rounded-3xl p-8 w-[460px] space-y-3"
         >
-          <h2 className="text-4xl font-bold text-center text-[#b8d8ba]">Create your account</h2>
+          <h2 className="text-4xl font-bold text-center text-emerald-800">Create your account</h2>
 
           {/* Name Fields */}
           <input name="first_name" placeholder="First Name" required value={form.first_name} onChange={handleChange} className="form-input" />
@@ -143,7 +161,7 @@ export default function Signup() {
               onChange={handleChange}
               className="form-input pr-16"
             />
-            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-2 top-2 text-sm text-[#a5b295]">
+            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-2 top-2 text-sm text-emerald-800">
               {showPassword ? "Hide" : "Show"}
             </button>
           </div>
@@ -158,7 +176,7 @@ export default function Signup() {
               onChange={handleChange}
               className="form-input pr-16"
             />
-            <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-2 top-2 text-sm text-[#a5b295]">
+            <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-2 top-2 text-sm text-emerald-800">
               {showConfirmPassword ? "Hide" : "Show"}
             </button>
           </div>
@@ -167,7 +185,7 @@ export default function Signup() {
           <div className="flex items-center">
             <input type="checkbox" name="agree" checked={form.agree} onChange={handleChange} />
             <label className="ml-2 text-sm">
-              I agree to the <span className="text-[#4caf50] font-medium">Terms & Conditions</span>
+              I agree to the <span className="text-emerald-600 font-medium">Terms & Conditions</span>
             </label>
           </div>
 
@@ -178,7 +196,7 @@ export default function Signup() {
           <button
             type="submit"
             disabled={!form.agree}
-            className="w-full bg-[#b8d8ba] hover:bg-[#a5b295] text-white font-bold py-3 rounded-3xl mt-2"
+            className="w-full bg-emerald-800 hover:bg-[#a5b295] text-white font-bold py-3 rounded-3xl mt-2"
           >
             Register
           </button>

@@ -29,24 +29,25 @@ export default function Sharehistory({ isOpen, onClose, rows = [], loading = fal
 
   return (
     <div className="fixed inset-0 bg-black/45 flex justify-center items-center z-50">
-      <div className="bg-white border-10 border-[#b8d8ba] rounded-lg shadow-lg p-6 w-[700px] max-h-[80vh] overflow-auto relative">
-        {/* Header */}
-        <h2 className="text-3xl font-bold mb-4 text-center text-[#7e9e6c]">Shares History</h2>
+      <div className="relative w-full max-w-3xl bg-white rounded-xl shadow-2xl overflow-auto p-6 z-60">
+        <div className="flex items-center  justify-between mb-4">
+          <h3 className="text-2xl font-bold text-[#7e9e6c]">Shares History</h3>
+        </div>
 
-        {/* Content */}
-        <div className="border-t border-gray-300 pt-4">
           {loading ? (
             <p className="text-center py-6 text-gray-600">Loading shares...</p>
           ) : items.length === 0 ? (
             <p className="text-center py-6 text-gray-600">No share history available.</p>
           ) : (
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-[#b8d8ba] text-gray-800">
-                  <th className="p-2 border">Date</th>
-                  <th className="p-2 border">Payment Method</th>
-                  <th className="p-2 border">Amount (₱)</th>
-                  <th className="p-2 border">Notes</th>
+            
+            <div className="overflow-auto shadow-md border-gray-400 border rounded-lg">
+            <table className="w-full text-sm">
+              <thead className="bg-[#d6ead8]">
+                <tr>
+                  <th className="text-left px-3 py-3">Date</th>
+                  <th className="text-left px-3 py-3">Payment Method</th>
+                  <th className="text-left px-3 py-3">Amount (₱)</th>
+                  <th className="text-left px-3 py-3">Notes</th>
                 </tr>
               </thead>
               <tbody>
@@ -58,18 +59,19 @@ export default function Sharehistory({ isOpen, onClose, rows = [], loading = fal
                   const notes = r.notes ?? r.note ?? r.remarks ?? "";
 
                   return (
-                    <tr key={r.id ?? idx} className="border-b hover:bg-[#f7fbf7]">
-                      <td className="p-2 border align-top">{fmtDate(rawDate)}</td>
-                      <td className="p-2 border align-top">{String(paymentMethod)}</td>
-                      <td className="p-2 border align-top">{fmtMoney(amt)}</td>
-                      <td className="p-2 border align-top">{notes}</td>
+                    <tr key={r.id ?? idx} className="border-t border-gray-400">
+                      <td className="px-3 py-3">{fmtDate(rawDate)}</td>
+                      <td className="px-3 py-3">{String(paymentMethod)}</td>
+                      <td className="px-3 py-3">{fmtMoney(amt)}</td>
+                      <td className="px-3 py-3">{notes}</td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
+            </div>
           )}
-        </div>
+        
 
         {/* Close */}
         <div className="mt-6 flex justify-end">

@@ -168,17 +168,13 @@ export default function LoanApplication({ onBack, memberId = null, memberName = 
     loan?.checkNumber ?? loan?.check_number ?? loan?.checkNo ?? loan?.check_no ?? loan?.check ?? "—";
 
   return (
-    <div className="flex-1 border-10 bg-white border-[#b8d8ba] rounded-lg shadow p-3 relative">
-      <button
-        onClick={() => (typeof onBack === "function" ? onBack() : null)}
-        className="absolute top-4 left-4 text-[#5a7350] hover:text-[#7e9e6c] transition text-2xl"
-        title="Back"
-      >
-        <FaArrowLeft />
-      </button>
+    <div>
 
-      <div className="max-w-auto p-6">
-        <h2 className="text-4xl font-bold text-center text-[#5a7350] mb-4">Loan History</h2>
+
+      <div className="max-w-auto rounded-lg bg-white p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-2xl font-bold text-[#7e9e6c]">Loan History</h3>
+        </div>
 
         {loading ? (
           <p className="text-center text-gray-600 mt-6">Loading loan records...</p>
@@ -187,9 +183,10 @@ export default function LoanApplication({ onBack, memberId = null, memberName = 
         ) : loanRecords.length === 0 ? (
           <p className="text-center text-gray-600 mt-6">No loan records found.</p>
         ) : (
-          <div className="border-t border-gray-300 pt-4">
-            <table className="w-full border border-gray-300 rounded-lg overflow-hidden">
-              <thead className="bg-[#7e9e6c] text-white">
+          <div className="overflow-auto shadow-md border-gray-400 border rounded-lg">
+            
+            <table className="w-full text-sm">
+              <thead className="bg-[#d6ead8]">
                 <tr>
                   <th className="py-3 px-4 text-left">Date</th>
                   <th className="py-3 px-4 text-left">Loan Amount (₱)</th>
@@ -202,15 +199,15 @@ export default function LoanApplication({ onBack, memberId = null, memberName = 
                 {loanRecords.map((record, index) => (
                   <tr
                     key={record.id ?? index}
-                    className={`${index % 2 === 0 ? "bg-gray-50" : "bg-white"} hover:bg-[#e4f2e7] transition`}
+                    className={`${index % 2 === 0 ? "bg-gray-50" : "bg-white"} `}
                   >
-                    <td className="py-3 px-4 border-t border-gray-200">
+                    <td className="py-3 px-4 border-t border-gray-400">
                       {record.createdAt ? new Date(record.createdAt).toLocaleDateString() : "N/A"}
                     </td>
-                    <td className="py-3 px-4 border-t border-gray-200">{formatCurrency(record.loanAmount)}</td>
-                    <td className="py-3 px-4 border-t border-gray-200">{record.duration ? `${record.duration} months` : "N/A"}</td>
+                    <td className="py-3 px-4 border-t border-gray-400">{formatCurrency(record.loanAmount)}</td>
+                    <td className="py-3 px-4 border-t border-gray-400">{record.duration ? `${record.duration} months` : "N/A"}</td>
                     <td
-                      className={`py-3 px-4 border-t border-gray-200 font-semibold ${
+                      className={`py-3 px-4 border-t border-gray-400 font-semibold ${
                         (record.status || "").toLowerCase() === "paid"
                           ? "text-blue-600"
                           : (record.status || "").toLowerCase() === "approved"
@@ -222,10 +219,10 @@ export default function LoanApplication({ onBack, memberId = null, memberName = 
                     >
                       {record.status || "N/A"}
                     </td>
-                    <td className="py-3 px-4 border-t border-gray-200 text-center">
+                    <td className="py-3 px-4 border-t border-gray-400 text-center">
                       <button
                         onClick={() => computeSchedule(record)}
-                        className="bg-[#7e9e6c] text-white px-3 py-1 rounded hover:bg-[#6a8b5a]"
+                        className="px-3 py-1 shadow-lg border border-gray-400 rounded"
                       >
                         View
                       </button>
@@ -234,8 +231,19 @@ export default function LoanApplication({ onBack, memberId = null, memberName = 
                 ))}
               </tbody>
             </table>
+            
           </div>
-        )}
+          
+        )} 
+        {/* Close */}
+        <div className="mt-6 flex justify-end">
+          <button
+            onClick={onBack}
+            className="bg-[#b8d8ba] text-white px-6 py-2 rounded-lg hover:bg-[#8fa182]"
+          >
+            Close
+          </button>
+        </div>
       </div>
 
       {/* Loan Details Modal */}

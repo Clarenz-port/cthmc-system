@@ -118,6 +118,9 @@ export default function Approvedloan({ onBack }) {
     setSchedule(scheduleData);
   };
 
+    const readCheckNumber = (loan) =>
+    loan?.checkNumber ?? loan?.check_number ?? loan?.checkNo ?? loan?.check_no ?? loan?.check ?? "—";
+    
   return (
     <div className="flex-1 bg-white rounded-lg shadow-lg p-3 relative">
       <button
@@ -154,7 +157,7 @@ export default function Approvedloan({ onBack }) {
                 {loanRecords.map((record, index) => (
                   <tr
                     key={record.id || index}
-                    className={`${index % 2 === 0 ? "bg-gray-50" : "bg-white"} hover:bg-[#e4f2e7] transition`}
+                    className={`${index % 2 === 0 ? "bg-gray-50" : "bg-white"} `}
                   >
                     <td className="py-3 px-4 border-t border-gray-200">
                       {record.approvalDate ? new Date(record.approvalDate).toLocaleDateString() : "N/A"}
@@ -165,16 +168,16 @@ export default function Approvedloan({ onBack }) {
                     <td className="py-3 px-4 border-t border-gray-200">{formatCurrency(record.loanAmount)}</td>
                     <td className="py-3 px-4 border-t border-gray-200">{record.duration ? `${record.duration} months` : "N/A"}</td>
                   <td
-  className={`py-3 px-4 border-t border-gray-200 font-semibold ${
-    record.status === "Paid"
-      ? "text-blue-600"
-      : record.status === "Approved"
-      ? "text-green-600"
-      : "text-red-600"
-  }`}
->
-  {record.status}
-</td>
+                    className={`py-3 px-4 border-t border-gray-200 font-semibold ${
+                      record.status === "Paid"
+                        ? "text-blue-600"
+                        : record.status === "Approved"
+                        ? "text-green-600"
+                        : "text-red-600"
+                    }`}
+                  >
+                    {record.status}
+                  </td>
                     <td className="py-3 px-4 border-t border-gray-200 text-center">
                       <button
                         onClick={() => {
@@ -217,6 +220,7 @@ export default function Approvedloan({ onBack }) {
               <p><strong>Duration:</strong> {selectedLoan.duration ? `${selectedLoan.duration} months` : "N/A"}</p>
               <p><strong>Start Month:</strong> {selectedLoan.startMonth || "N/A"}</p>
               <p><strong>End Month:</strong> {selectedLoan.endMonth || "N/A"}</p>
+              <p><strong>Check Number:</strong> {readCheckNumber(selectedLoan)}</p>
               <hr className="my-3" />
 
               <h3 className="text-xl font-bold text-[#56794a] mb-2">Amortization Schedule</h3>
@@ -234,7 +238,7 @@ export default function Approvedloan({ onBack }) {
                 </thead>
                 <tbody>
                   {schedule.map((row) => (
-                    <tr key={row.month} className="border-b hover:bg-[#f9fcf9]">
+                    <tr key={row.month} className="border-b ">
                       <td className="py-1 px-2">{row.month}</td>
                       <td className="py-1 px-2 text-right">{formatCurrency(row.interestPayment)}</td>
                       <td className="py-1 px-2 text-right">{formatCurrency(row.remainingBalance)}</td>

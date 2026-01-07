@@ -113,7 +113,7 @@ export default function SharesPage({ onBack, members = [] }) {
   }, 0);
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+    <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
 
       {/* HEADER */}
       <div className="relative flex flex-col md:flex-row items-center p-2 md:items-start justify-center md:justify-between mb-6 gap-3">
@@ -127,6 +127,7 @@ export default function SharesPage({ onBack, members = [] }) {
         </button>
 
         {/* Title centered on all sizes */}
+        
         <h2 className="text-2xl md:text-4xl ml-23 font-bold text-[#5a7350] text-center">
           Shares
         </h2>
@@ -186,7 +187,7 @@ export default function SharesPage({ onBack, members = [] }) {
                     key={r.id ?? idx}
                     className={`${
                       idx % 2 === 0 ? "bg-white" : "bg-gray-50"
-                    } hover:bg-[#e4f2e7] transition`}
+                    } `}
                   >
                     <td className="py-4 px-4 border-t border-gray-200">
                       {fmtDate(rawDate)}
